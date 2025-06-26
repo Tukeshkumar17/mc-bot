@@ -20,15 +20,17 @@ function createBot() {
     bot.pathfinder.setMovements(defaultMove);
 
     console.log('✅ Bot spawned and ready!');
-    bot.chat('/register yourpassword yourpassword'); // Remove if not using cracked
-    bot.chat('/login yourpassword'); // Remove if not using cracked
+    bot.chat('/register yourpassword yourpassword'); // Optional: For cracked servers
+    bot.chat('/login yourpassword'); // Optional: For cracked servers
 
+    // Look around randomly
     setInterval(() => {
       const yaw = (Math.random() - 0.5) * Math.PI;
       const pitch = (Math.random() - 0.5) * Math.PI / 4;
       bot.look(yaw, pitch, true);
     }, 10000);
 
+    // Anti-AFK jumping
     setInterval(() => {
       bot.setControlState('jump', true);
       setTimeout(() => bot.setControlState('jump', false), 500);
@@ -37,8 +39,15 @@ function createBot() {
 
   bot.on('autoeat_started', () => console.log('🍗 Auto-eating'));
   bot.on('autoeat_finished', () => console.log('✅ Done eating'));
+
   bot.on('health', () => {
     if (bot.food < 18) bot.activateItem();
+  });
+
+  // Auto-reconnect on disconnect
+  bot.on('end', () => {
+    console.log('🔁 Bot disconnected. Reconnecting in 10 seconds...');
+    setTimeout(createBot, 10000);
   });
 
   return bot;
