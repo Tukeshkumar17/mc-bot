@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AFK Bot Dashboard</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <h1>🟢 Bot is Online as <%= username %></h1>
+  <input id="msg" placeholder="Type a message to send in chat" />
+  <button onclick="send()">Send</button>
+  <script>
+    const socket = io();
+    function send() {
+      const msg = document.getElementById('msg').value;
+      socket.emit('chat', msg);
+    }
+  </script>
+</body>
+</html>
