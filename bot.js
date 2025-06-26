@@ -1,6 +1,8 @@
 const mineflayer = require('mineflayer');
 const autoeat = require('mineflayer-auto-eat').plugin;
-const { pathfinder, Movements } = require('mineflayer-pathfinder');
+const pathfinder = require('mineflayer-pathfinder').pathfinder;
+const Movements = require('mineflayer-pathfinder').Movements;
+const minecraftData = require('minecraft-data');
 const pvp = require('mineflayer-pvp').plugin;
 
 function createBot() {
@@ -9,42 +11,37 @@ function createBot() {
     port: parseInt(process.env.MC_PORT),
     username: process.env.MC_USERNAME,
     password: process.env.MC_PASSWORD,
-    version: process.env.MC_VERSION
+    version: process.env.MC_VERSION,
   });
 
-  // ✅ Load plugins correctly
+  // ✅ Load each plugin correctly
   bot.loadPlugin(autoeat);
   bot.loadPlugin(pathfinder);
   bot.loadPlugin(pvp);
 
   bot.once('spawn', () => {
-    console.log('✅ Bot spawned and ready!');
+    console.log('✅ Bot is online!');
 
-    const mcData = require('minecraft-data')(bot.version);
+    const mcData = minecraftData(bot.version);
     const defaultMove = new Movements(bot, mcData);
     bot.pathfinder.setMovements(defaultMove);
 
-    // Optional: Uncomment if your server requires /login or /register
-    // bot.chat('/register yourpassword yourpassword');
-    // bot.chat('/login yourpassword');
-
-    // Random head movement
+    // Example movement / anti-AFK
     setInterval(() => {
-      const yaw = (Math.random() - 0.5) * Math.PI;
-      const pitch = (Math.random() - 0.5) * Math.PI / 4;
+      const yaw = Math.random() * Math.PI * 2;
+      const pitch = 0;
       bot.look(yaw, pitch, true);
     }, 10000);
 
     // Jumping anti-AFK
     setInterval(() => {
       bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 400);
-    }, 20000);
+      setTimeout(() => bot.setControlState('jump', false), 300);
+    }, 15000);
   });
 
-  // Auto-eat
   bot.on('autoeat_started', () => {
-    console.log('🍗 Auto-eating started');
+    console.log('🍗 Auto eating...');
   });
 
   bot.on('autoeat_finished', () => {
@@ -57,9 +54,8 @@ function createBot() {
     }
   });
 
-  // Auto-reconnect
   bot.on('end', () => {
-    console.log('🔁 Bot disconnected. Reconnecting in 10 seconds...');
+    console.log('🔁 Bot disconnected, retrying in 10s...');
     setTimeout(createBot, 10000);
   });
 
