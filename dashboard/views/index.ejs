@@ -2,20 +2,522 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AFK Bot Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft AFK Bot Dashboard</title>
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+    }
+
+    .status-online { background-color: #4ade80; }
+    .status-offline { background-color: #ef4444; }
+    .status-reconnecting { background-color: #f59e0b; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card h3 {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+    }
+
+    .stat-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.8em;
+      opacity: 0.8;
+    }
+
+    .chat-container {
+      height: 300px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .chat-message {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-username {
+      font-weight: bold;
+      color: #4ade80;
+    }
+
+    .chat-input-container {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      placeholder-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+    }
+
+    .server-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+      z-index: 1000;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success { background: #10b981; }
+    .notification.error { background: #ef4444; }
+    .notification.info { background: #3b82f6; }
+
+    .logs {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+
+    .log-entry {
+      margin-bottom: 2px;
+      word-wrap: break-word;
+    }
+
+    .log-error { color: #ef4444; }
+    .log-success { color: #4ade80; }
+    .log-info { color: #3b82f6; }
+
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>🟢 Bot is Online as <%= username %></h1>
-  <input id="msg" placeholder="Type a message to send in chat" />
-  <button onclick="send()">Send</button>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <span id="statusIndicator" class="status-indicator status-offline"></span>
+        Minecraft AFK Bot Dashboard
+      </h1>
+      <p id="statusText">Connecting...</p>
+    </div>
+
+    <div class="dashboard">
+      <!-- Bot Stats Card -->
+      <div class="card">
+        <h3>🤖 Bot Statistics</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span id="health" class="stat-value">0</span>
+            <span class="stat-label">Health</span>
+          </div>
+          <div class="stat-item">
+            <span id="food" class="stat-value">0</span>
+            <span class="stat-label">Food</span>
+          </div>
+          <div class="stat-item">
+            <span id="uptime" class="stat-value">0s</span>
+            <span class="stat-label">Uptime</span>
+          </div>
+          <div class="stat-item">
+            <span id="position" class="stat-value">0, 0, 0</span>
+            <span class="stat-label">Position</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server Info Card -->
+      <div class="card">
+        <h3>🌐 Server Information</h3>
+        <div class="server-info">
+          <div class="stat-item">
+            <span class="stat-value"><%= host %></span>
+            <span class="stat-label">Host</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value"><%= port %></span>
+            <span class="stat-label">Port</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value"><%= username %></span>
+            <span class="stat-label">Username</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value"><%= version %></span>
+            <span class="stat-label">Version</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Card -->
+      <div class="card">
+        <h3>🎮 Controls</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn btn-danger" onclick="restartBot()">🔄 Restart Bot</button>
+          <button class="btn btn-primary" onclick="sendCommand('!ping')">📡 Ping Bot</button>
+          <button class="btn btn-primary" onclick="sendCommand('!pos')">📍 Get Position</button>
+          <button class="btn btn-primary" onclick="sendCommand('!health')">❤️ Check Health</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="card">
+      <h3>💬 Chat</h3>
+      <div class="chat-container">
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-container">
+          <input 
+            id="chatInput" 
+            class="chat-input" 
+            placeholder="Type a message to send in chat..." 
+            onkeypress="handleChatKeypress(event)"
+          />
+          <button class="btn btn-primary" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Card -->
+    <div class="card">
+      <h3>📋 Activity Logs</h3>
+      <div id="logs" class="logs"></div>
+    </div>
+  </div>
 
   <script>
     const socket = io();
-    function send() {
-      const msg = document.getElementById('msg').value;
-      socket.emit('chat', msg);
+    let botStats = {
+      status: 'offline',
+      username: null,
+      health: 0,
+      food: 0,
+      position: null,
+      uptime: 0
+    };
+
+    // Socket event listeners
+    socket.on('connect', () => {
+      addLog('Connected to dashboard', 'success');
+    });
+
+    socket.on('disconnect', () => {
+      addLog('Disconnected from dashboard', 'error');
+      updateStatus('offline', 'Disconnected from server');
+    });
+
+    socket.on('botStatus', (status) => {
+      botStats = { ...botStats, ...status };
+      updateBotDisplay();
+    });
+
+    socket.on('statsUpdate', (stats) => {
+      botStats = { ...botStats, ...stats };
+      updateBotDisplay();
+    });
+
+    socket.on('chatMessage', (data) => {
+      addChatMessage(data.username, data.message);
+    });
+
+    socket.on('botAction', (action) => {
+      addLog(`Bot action: ${action}`, 'info');
+    });
+
+    socket.on('botError', (error) => {
+      addLog(`Bot error: ${error}`, 'error');
+      showNotification('Bot Error: ' + error, 'error');
+    });
+
+    socket.on('notification', (message) => {
+      showNotification(message, 'info');
+    });
+
+    // UI Functions
+    function updateBotDisplay() {
+      // Update status indicator
+      const indicator = document.getElementById('statusIndicator');
+      const statusText = document.getElementById('statusText');
+      
+      indicator.className = 'status-indicator status-' + botStats.status;
+      
+      switch(botStats.status) {
+        case 'online':
+          statusText.textContent = `Bot "${botStats.username}" is online`;
+          break;
+        case 'reconnecting':
+          statusText.textContent = `Reconnecting... (${botStats.attempt}/${botStats.maxAttempts})`;
+          break;
+        case 'offline':
+          statusText.textContent = 'Bot is offline';
+          break;
+        default:
+          statusText.textContent = 'Status: ' + botStats.status;
+      }
+
+      // Update stats
+      document.getElementById('health').textContent = botStats.health + '/20';
+      document.getElementById('food').textContent = botStats.food + '/20';
+      
+      if (botStats.position) {
+        const pos = botStats.position;
+        document.getElementById('position').textContent = 
+          `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+      }
+      
+      if (botStats.uptime) {
+        document.getElementById('uptime').textContent = formatUptime(botStats.uptime);
+      }
     }
+
+    function updateStatus(status, message) {
+      botStats.status = status;
+      document.getElementById('statusIndicator').className = 'status-indicator status-' + status;
+      document.getElementById('statusText').textContent = message;
+    }
+
+    function formatUptime(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    }
+
+    function addChatMessage(username, message) {
+      const chatMessages = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'chat-message';
+      messageDiv.innerHTML = `<span class="chat-username">${username}:</span> ${message}`;
+      
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+      // Keep only last 50 messages
+      while (chatMessages.children.length > 50) {
+        chatMessages.removeChild(chatMessages.firstChild);
+      }
+    }
+
+    function addLog(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const logDiv = document.createElement('div');
+      logDiv.className = `log-entry log-${type}`;
+      logDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      
+      logs.appendChild(logDiv);
+      logs.scrollTop = logs.scrollHeight;
+      
+      // Keep only last 100 log entries
+      while (logs.children.length > 100) {
+        logs.removeChild(logs.firstChild);
+      }
+    }
+
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      
+      document.body.appendChild(notification);
+      
+      // Show notification
+      setTimeout(() => notification.classList.add('show'), 100);
+      
+      // Hide notification after 5 seconds
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => document.body.removeChild(notification), 300);
+      }, 5000);
+    }
+
+    // Chat functions
+    function sendChat() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      
+      if (message) {
+        socket.emit('chat', message);
+        input.value = '';
+        addLog(`Sent: ${message}`, 'info');
+      }
+    }
+
+    function handleChatKeypress(event) {
+      if (event.key === 'Enter') {
+        sendChat();
+      }
+    }
+
+    function sendCommand(command) {
+      socket.emit('chat', command);
+      addLog(`Command sent: ${command}`, 'info');
+    }
+
+    function restartBot() {
+      if (confirm('Are you sure you want to restart the bot?')) {
+        socket.emit('restartBot');
+        showNotification('Bot restart initiated', 'info');
+        addLog('Bot restart requested', 'info');
+      }
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+      addLog('Dashboard loaded', 'success');
+    });
+
+    // Update uptime every second
+    setInterval(() => {
+      if (botStats.status === 'online' && botStats.uptime) {
+        botStats.uptime += 1000;
+        document.getElementById('uptime').textContent = formatUptime(botStats.uptime);
+      }
+    }, 1000);
   </script>
 </body>
 </html>
